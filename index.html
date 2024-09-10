@@ -106,62 +106,76 @@
         <div class="search-results" id="search-results" style="display: none;">
             <h2>Search Results</h2>
             <div id="search-results-content"></div>
+            <div id="load-more" style="text-align: center; margin: 20px 0;">
+                <button onclick="loadMore()">Load More</button>
+            </div>
         </div>
     </div>
 
     <script>
         const API_KEY = 'AIzaSyBEH8GmNNBr79dCx4gGP7N_tS1TRVMg7Pc'; // Replace with your YouTube Data API key
+        let nextPageToken = '';
+        let searchQuery = '';
+        let isLoading = false;
 
         async function fetchRecommendedVideos() {
             try {
                 const response = await fetch(`https://www.googleapis.com/youtube/v3/videos?part=snippet,contentDetails,statistics&chart=mostPopular&key=${API_KEY}`);
                 const data = await response.json();
                 displayVideos(data.items, 'recommended-videos');
+                nextPageToken = data.nextPageToken || '';
             } catch (error) {
                 console.error('Error fetching recommended videos:', error);
             }
         }
 
         async function searchVideos() {
-            const query = document.getElementById('query').value;
-            if (!query) {
+            searchQuery = document.getElementById('query').value;
+            if (!searchQuery) {
                 alert('Please enter a search query.');
                 return;
             }
 
-            try {
-                document.getElementById('search-results').style.display = 'block';
-                document.getElementById('recommended-videos').style.display = 'none';
+            document.getElementById('search-results').style.display = 'block';
+            document.getElementById('recommended-videos').style.display = 'none';
+            document.getElementById('search-results-content').innerHTML = '';
+            nextPageToken = '';
 
-                const response = await fetch(`https://www.googleapis.com/youtube/v3/search?part=snippet&q=${encodeURIComponent(query)}&type=video&key=${API_KEY}`);
+            loadMore();
+        }
+
+        async function loadMore() {
+            if (isLoading) return;
+            isLoading = true;
+
+            try {
+                const url = searchQuery
+                    ? `https://www.googleapis.com/youtube/v3/search?part=snippet&q=${encodeURIComponent(searchQuery)}&type=video&key=${API_KEY}&pageToken=${nextPageToken}`
+                    : `https://www.googleapis.com/youtube/v3/videos?part=snippet,contentDetails,statistics&chart=mostPopular&key=${API_KEY}&pageToken=${nextPageToken}`;
+
+                const response = await fetch(url);
                 const data = await response.json();
-                
-                const videoIds = data.items.map(item => item.id.videoId).join(',');
-                
-                if (videoIds) {
-                    const videoDetailsResponse = await fetch(`https://www.googleapis.com/youtube/v3/videos?part=contentDetails,snippet&id=${videoIds}&key=${API_KEY}`);
-                    const videoDetailsData = await videoDetailsResponse.json();
-                    displayVideos(videoDetailsData.items, 'search-results-content');
-                }
+                displayVideos(data.items, 'search-results-content');
+                nextPageToken = data.nextPageToken || '';
             } catch (error) {
-                console.error('Error fetching search results:', error);
-                alert('Failed to fetch videos. Please try again.');
+                console.error('Error fetching more videos:', error);
+                alert('Failed to fetch more videos. Please try again.');
+            } finally {
+                isLoading = false;
             }
         }
 
         function displayVideos(videos, containerId) {
             const container = document.getElementById(containerId);
-            container.innerHTML = '';
-
             videos.forEach(video => {
-                const duration = video.contentDetails.duration;
+                const duration = video.contentDetails?.duration || 'PT0M0S';
                 if (!isShort(duration)) {
                     const videoElement = document.createElement('div');
                     videoElement.classList.add('video');
                     videoElement.innerHTML = `
                         <h3>${video.snippet.title}</h3>
-                        <a href="video.html?id=${video.id}" target="_blank">
-                            <img src="https://img.youtube.com/vi/${video.id}/hqdefault.jpg" alt="${video.snippet.title}">
+                        <a href="video.html?id=${video.id.videoId || video.id}" target="_blank">
+                            <img src="https://img.youtube.com/vi/${video.id.videoId || video.id}/hqdefault.jpg" alt="${video.snippet.title}">
                         </a>
                     `;
                     container.appendChild(videoElement);
@@ -181,6 +195,16 @@
 
         // Fetch recommended videos when the page loads
         fetchRecommendedVideos();
+
+        // Infinite scroll using IntersectionObserver
+        const loadMoreButton = document.getElementById('load-more');
+        const observer = new IntersectionObserver(entries => {
+            if (entries[0].isIntersecting) {
+                loadMore();
+            }
+        }, { threshold: 1.0 });
+
+        observer.observe(loadMoreButton);
     </script>
 </body>
 </html>
