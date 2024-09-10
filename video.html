@@ -12,20 +12,21 @@
             background-color: #f4f4f4;
             color: #333;
         }
-        .container {
-            width: 80%;
-            margin: 0 auto;
-            padding: 20px;
-        }
         header {
             text-align: center;
-            padding: 20px 0;
+            padding: 20px;
             background-color: #ff0000;
             color: #fff;
         }
         header h1 {
             margin: 0;
             font-size: 2em;
+        }
+        .container {
+            width: 90%;
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
         }
         .video {
             margin-bottom: 20px;
@@ -35,17 +36,21 @@
             height: 600px;
             border: none;
         }
-        .description {
+        .description, .comments {
             margin-top: 20px;
         }
-        .description h2 {
+        .description h2, .comments h2 {
             font-size: 1.5em;
+            margin: 0 0 10px;
         }
-        .comments {
-            margin-top: 20px;
+        .comments div {
+            border-bottom: 1px solid #ddd;
+            padding: 10px 0;
         }
-        .comments h2 {
-            font-size: 1.5em;
+        @media (max-width: 600px) {
+            .video iframe {
+                height: 315px;
+            }
         }
     </style>
 </head>
@@ -81,7 +86,7 @@
 
             try {
                 const videoResponse = await fetch(`https://www.googleapis.com/youtube/v3/videos?part=snippet,contentDetails,statistics&id=${videoId}&key=${API_KEY}`);
-                const videoData = await videoResponse.json();
+const videoData = await videoResponse.json();
                 const video = videoData.items[0];
 
                 document.getElementById('videoPlayer').src = `https://www.youtube.com/embed/${videoId}?autoplay=1`;
@@ -99,7 +104,8 @@
         function displayComments(comments) {
             const commentsContainer = document.getElementById('videoComments');
             commentsContainer.innerHTML = '';
-comments.forEach(commentThread => {
+
+            comments.forEach(commentThread => {
                 const comment = commentThread.snippet.topLevelComment.snippet;
                 const commentElement = document.createElement('div');
                 commentElement.innerHTML = `
